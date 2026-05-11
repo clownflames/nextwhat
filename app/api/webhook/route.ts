@@ -128,6 +128,8 @@ export async function POST(req: NextRequest) {
                 whatsappTimestamp:
                     message.timestamp || null,
             });
+
+            await fetch("/api/reply")
         }
 
         // =========================
