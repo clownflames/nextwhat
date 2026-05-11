@@ -13,6 +13,7 @@ import { whatsappMessageTable } from "@/db/schema/whatsapp";
 
 import { PHONE_ID } from "@/client";
 import { date } from "drizzle-orm/mysql-core";
+import { sendWhatsAppReply } from "@/lib/sarwam";
 
 // =========================
 // WEBHOOK VERIFICATION
@@ -103,17 +104,14 @@ export async function POST(req: NextRequest) {
 
         // Auto reply trigger (only for text messages)
         if (message.type === "text") {
-          // Call reply API asynchronously without waiting
-          fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/reply`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              from: message.from, 
-              messageId: message.id,
-              body: message.text?.body,
-              
-            })
-          }).catch(err => console.error("Reply API error:", err));
+          // Send reply directly using function
+          sendWhatsAppReply({
+            from: message.from,
+            body: message.text?.body,
+            messageId: message.id,
+            markAsRead: true,
+            saveToDatabase: false
+          }).catch(err => console.error("Reply error:", err));
         }
       } catch (dbError) {
         console.error("Database save error:", dbError);
@@ -126,7 +124,7 @@ export async function POST(req: NextRequest) {
     for (const status of events.statuses as any[]) {
       // Status IDs are different - use conversation ID or status ID
       const statusId = status.id || status.message_id;
-      
+
       if (!statusId) continue;
 
       const existingStatus = await db
@@ -164,7 +162,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
-    
+
   } catch (error) {
     console.error("Webhook Error:", error);
     return NextResponse.json(
