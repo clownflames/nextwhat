@@ -1,0 +1,1 @@
+ALTER TABLE "whatsapp_messages" ADD COLUMN "replyed" boolean DEFAULT false NOT NULL;

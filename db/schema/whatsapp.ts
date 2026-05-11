@@ -69,6 +69,10 @@ export const whatsappMessageTable = pgTable(
       }
     ),
 
+    replyed: boolean("replyed")
+      .default(false)
+      .notNull(),
+
     createdAt: timestamp("created_at")
       .defaultNow()
       .notNull(),
