@@ -129,7 +129,8 @@ export async function POST(req: NextRequest) {
                     message.timestamp || null,
             });
 
-            await fetch("/api/reply")
+            if (message.type == "text")
+                await fetch("/api/reply")
         }
 
         // =========================
