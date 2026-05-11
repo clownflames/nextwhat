@@ -1,7 +1,7 @@
 // app/api/cron/reply/route.ts
 
 import { NextResponse } from "next/server";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { client, PHONE_ID } from "@/client";
 
@@ -23,10 +23,12 @@ export async function GET() {
             .select()
             .from(whatsappMessageTable)
             .where(
+                and(
                 eq(
                     whatsappMessageTable.replyed,
                     false
-                )
+                ),                
+                eq(whatsappMessageTable.type,"text"))
             )
             .orderBy(
                 asc(whatsappMessageTable.id)
