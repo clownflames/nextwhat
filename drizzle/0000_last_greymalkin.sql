@@ -1,0 +1,23 @@
+CREATE TABLE "whatsapp_messages" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"message_id" text NOT NULL,
+	"from_number" varchar(30),
+	"to_number" varchar(30),
+	"type" varchar(50) NOT NULL,
+	"status" varchar(50),
+	"body" text,
+	"media_id" text,
+	"media_url" text,
+	"mime_type" text,
+	"file_name" text,
+	"caption" text,
+	"button_text" text,
+	"button_payload" text,
+	"forwarded" boolean DEFAULT false NOT NULL,
+	"billable" boolean,
+	"pricing_model" text,
+	"pricing_category" text,
+	"raw_data" jsonb NOT NULL,
+	"whatsapp_timestamp" varchar(50),
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
