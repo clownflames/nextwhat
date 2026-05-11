@@ -63,16 +63,16 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        await client.messages.sendText({
-            phoneNumberId: PHONE_ID,
-            to: process.env.ADMIN_NO!,
-            body: "POST Request found"
-        })
-        await client.messages.sendText({
-            phoneNumberId: PHONE_ID,
-            to: process.env.ADMIN_NO!,
-            body: rawBody
-        })
+        // await client.messages.sendText({
+        //     phoneNumberId: PHONE_ID,
+        //     to: process.env.ADMIN_NO!,
+        //     body: "POST Request found"
+        // })
+        // await client.messages.sendText({
+        //     phoneNumberId: PHONE_ID,
+        //     to: process.env.ADMIN_NO!,
+        //     body: rawBody
+        // })
         // parse payload
         const payload = JSON.parse(rawBody);
 
