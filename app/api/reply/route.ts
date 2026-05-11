@@ -61,7 +61,7 @@ export async function GET() {
                 // generate ai response
                 const response =
                     await sarvam.chat.completions({
-                        model: "sarvam-30b",
+                        model: "sarvam-105b",
 
                         messages: [
                             {
