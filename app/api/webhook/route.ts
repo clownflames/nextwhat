@@ -82,14 +82,14 @@ export async function POST(req: NextRequest) {
         // =========================
         // MESSAGES
         // =========================
-        events.messages.forEach((message) => {
+        events.messages.forEach(async (message) => {
             console.log("Message:", message);
 
             if(message.type == "text"){
-                 client.messages.sendText({
+                await client.messages.sendText({
                     phoneNumberId:PHONE_ID,
                     to:process.env.ADMIN_NO!,
-                    body:"text message recived"
+                    body:"text message recived : "+ message.text
                 })
             }
 
