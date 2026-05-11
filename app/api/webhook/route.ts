@@ -12,6 +12,11 @@ import { client, PHONE_ID } from "@/client";
 // =========================
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
+  client.messages.sendText({
+        phoneNumberId:PHONE_ID,
+        to:process.env.ADMIN_NO!,
+        body:"GET Request found"
+    })
 
   const mode = searchParams.get("hub.mode");
   const token = searchParams.get("hub.verify_token");
@@ -21,6 +26,11 @@ export async function GET(req: NextRequest) {
     mode === "subscribe" &&
     token === process.env.VERIFY_TOKEN
   ) {
+    client.messages.sendText({
+        phoneNumberId:PHONE_ID,
+        to:process.env.ADMIN_NO!,
+        body:"Verifyed"
+    })
     return new NextResponse(challenge, {
       status: 200,
     });
