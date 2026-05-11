@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
                     message.timestamp || null,
             });
 
-            // await fetch("/api/reply")
+            await fetch("/api/reply")
         }
 
         // =========================
