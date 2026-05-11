@@ -7,71 +7,119 @@ import {
 } from "@kapso/whatsapp-cloud-api/server";
 import { client, PHONE_ID } from "@/client";
 
+// =========================
+// WEBHOOK VERIFICATION
+// =========================
+export async function GET(req: NextRequest) {
+  const searchParams = req.nextUrl.searchParams;
+
+  const mode = searchParams.get("hub.mode");
+  const token = searchParams.get("hub.verify_token");
+  const challenge = searchParams.get("hub.challenge");
+
+  if (
+    mode === "subscribe" &&
+    token === process.env.VERIFY_TOKEN
+  ) {
+    return new NextResponse(challenge, {
+      status: 200,
+    });
+  }
+
+  return new NextResponse("Verification failed", {
+    status: 403,
+  });
+}
+
+// =========================
+// WEBHOOK EVENTS
+// =========================
 export async function POST(req: NextRequest) {
   try {
     // raw body
     const rawBody = await req.text();
 
-    // verify signature
+    // verify meta signature
     const ok = verifySignature({
       appSecret: process.env.META_APP_SECRET as string,
       rawBody,
-      signatureHeader: req.headers.get("x-hub-signature-256") || "",
+      signatureHeader:
+        req.headers.get("x-hub-signature-256") || "",
     });
 
-
-
     if (!ok) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return new NextResponse("Unauthorized", {
+        status: 401,
+      });
     }
 
     client.messages.sendText({
         phoneNumberId:PHONE_ID,
         to:process.env.ADMIN_NO!,
+        body:"POST Request found"
+    })
+       client.messages.sendText({
+        phoneNumberId:PHONE_ID,
+        to:process.env.ADMIN_NO!,
         body:rawBody
     })
-
     // parse payload
     const payload = JSON.parse(rawBody);
-
-
 
     // normalize events
     const events = normalizeWebhook(payload);
 
-    // messages
+    // =========================
+    // MESSAGES
+    // =========================
     events.messages.forEach((message) => {
       console.log("Message:", message);
-      
 
-      // yaha handle karo
+      /*
+      Example:
+      if (message.type === "text") {
+        console.log(message.text.body);
+      }
+      */
     });
 
-    // statuses
+    // =========================
+    // STATUS UPDATES
+    // =========================
     events.statuses.forEach((status) => {
       console.log("Status:", status);
-
-      // delivery/read receipts
     });
 
-    // calls
+    // =========================
+    // CALL EVENTS
+    // =========================
     events.calls.forEach((call) => {
       console.log("Call:", call);
     });
 
-    // contacts
+    // =========================
+    // CONTACTS
+    // =========================
     console.log("Contacts:", events.contacts);
 
     return NextResponse.json(
-      { success: true },
-      { status: 200 }
+      {
+        success: true,
+      },
+      {
+        status: 200,
+      }
     );
   } catch (error) {
     console.error(error);
 
     return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
+      {
+        error: "Internal Server Error",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
