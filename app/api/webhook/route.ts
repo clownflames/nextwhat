@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
                 await client.messages.sendText({
                     phoneNumberId:PHONE_ID,
                     to:process.env.ADMIN_NO!,
-                    body:"text message recived : "+ message.text
+                    body:"text message recived : "+ message.text + "from "+ message.from
                 })
             }
 
