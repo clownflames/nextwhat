@@ -148,41 +148,97 @@ export async function GET() {
 
 
 
+
 // =========================
-// REPLY TO MESSAGES
+// SARVAM AI API CALL (Direct HTTP)
+// =========================
+async function callSarvamAI(userMessage: string): Promise<string> {
+    try {
+        const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "api-subscription-key": process.env.SARVAM_API!,
+            },
+            body: JSON.stringify({
+                model: "sarvam-105b",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are a helpful WhatsApp assistant. Keep responses short (max 2-3 sentences), friendly, and conversational. Reply in the same language as the user.",
+                    },
+                    {
+                        role: "user",
+                        content: userMessage,
+                    },
+                ],
+                temperature: 0.7,
+                top_p: 1,
+                max_tokens: 300,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Sarvam API Error:", response.status, errorText);
+            throw new Error(`Sarvam API responded with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Sarvam Response:", JSON.stringify(data, null, 2));
+
+        // Extract response from different possible formats
+        let aiReply = null;
+        
+        if (data.choices?.[0]?.message?.content) {
+            aiReply = data.choices[0].message.content;
+        } else if (data.output?.text) {
+            aiReply = data.output.text;
+        } else if (data.response) {
+            aiReply = data.response;
+        } else if (data.text) {
+            aiReply = data.text;
+        } else {
+            aiReply = "I understand you, but I'm having trouble responding right now. Please try again.";
+        }
+
+        return aiReply;
+        
+    } catch (error) {
+        console.error("Sarvam AI Call Failed:", error);
+        throw error;
+    }
+}
+
+// =========================
+// POST - Process Messages
 // =========================
 export async function POST(req: NextRequest) {
     try {
-        // Parse request body (for immediate replies)
-        let immediateReply = false;
+        // Check if immediate reply request
         let immediateFrom = null;
         let immediateBody = null;
         
         try {
             const body = await req.json();
             if (body.from && body.body) {
-                immediateReply = true;
                 immediateFrom = body.from;
                 immediateBody = body.body;
+                console.log(`Immediate reply request from ${immediateFrom}: ${immediateBody}`);
             }
         } catch (e) {
-            // No body or invalid JSON - continue with normal flow
+            // No body - continue with pending messages
         }
-
-        // Initialize Sarvam AI Client
-        const sarvam = new SarvamAIClient({
-            apiSubscriptionKey: process.env.SARVAM_API!,
-        });
 
         let messagesToProcess = [];
 
-        if (immediateReply && immediateFrom && immediateBody) {
-            // Immediate reply for single message
+        if (immediateFrom && immediateBody) {
+            // Immediate reply
             messagesToProcess = [{
+                id: null,
                 from: immediateFrom,
                 body: immediateBody,
-                type: "text",
-                id: null // temporary
+                type: "text"
             }];
         } else {
             // Get unreplied messages from database
@@ -199,13 +255,20 @@ export async function POST(req: NextRequest) {
                 .limit(5);
         }
 
+        if (messagesToProcess.length === 0) {
+            return NextResponse.json({
+                success: true,
+                message: "No messages to process",
+                processed: 0,
+            });
+        }
+
         const results = [];
 
         for (const message of messagesToProcess) {
             try {
                 // Validate message
                 if (!message.body || !message.from) {
-                    // If it's a DB record, mark as replied to avoid infinite loop
                     if (message.id) {
                         await db
                             .update(whatsappMessageTable)
@@ -215,43 +278,16 @@ export async function POST(req: NextRequest) {
                     continue;
                 }
 
-                console.log(`Processing message from ${message.from}: ${message.body}`);
+                console.log(`🤖 Processing: ${message.from} -> "${message.body}"`);
 
-                // Generate AI response with better error handling
-                let aiReply = "Sorry, I could not understand. Could you please rephrase?";
+                // Generate AI response
+                let aiReply = "Sorry, I couldn't process your request. Please try again.";
                 
                 try {
-                    const response = await sarvam.chat.completions({
-                        model: "sarvam-105b",
-                        messages: [
-                            {
-                                role: "system",
-                                content: "You are a helpful WhatsApp assistant. Keep responses short, friendly, and conversational. Reply in the same language as the user.",
-                            },
-                            {
-                                role: "user",
-                                content: message.body,
-                            },
-                        ],
-                        temperature: 0.7,
-                        top_p: 1,
-                        max_tokens: 300, // Uncommented for better responses
-                    });
-
-                    console.log("AI Response:", JSON.stringify(response, null, 2));
-
-                    // Extract response safely
-                    if (response?.choices?.[0]?.message?.content) {
-                        aiReply = response.choices[0].message.content;
-                    } else if (response?.outputs?.[0]?.text) {
-                        // Alternative response structure
-                        aiReply = response.outputs[0].text;
-                    }
-                    
+                    aiReply = await callSarvamAI(message.body);
                 } catch (aiError) {
-                    console.error("AI Generation Error:", aiError);
-                    // Fallback response
-                    aiReply = "I'm having trouble right now. Please try again in a moment.";
+                    console.error("AI Error:", aiError);
+                    aiReply = "I'm experiencing technical difficulties. Please message again in a moment. 🙏";
                 }
 
                 // Send WhatsApp reply
@@ -261,13 +297,13 @@ export async function POST(req: NextRequest) {
                         to: message.from,
                         body: aiReply,
                     });
-                    console.log(`Reply sent to ${message.from}: ${aiReply}`);
+                    console.log(`✅ Reply sent to ${message.from}: ${aiReply.substring(0, 50)}...`);
                 } catch (whatsappError) {
                     console.error("WhatsApp Send Error:", whatsappError);
-                    aiReply = "Failed to send message. Please try again.";
+                    aiReply = "Failed to send message. Please check your number and try again.";
                 }
 
-                // Mark as replied only for database records
+                // Mark as replied (only for database records)
                 if (message.id) {
                     await db
                         .update(whatsappMessageTable)
@@ -280,20 +316,20 @@ export async function POST(req: NextRequest) {
                     user: message.from,
                     message: message.body,
                     reply: aiReply,
-                    success: true
+                    status: "sent",
                 });
 
-                // Add small delay to avoid rate limiting
+                // Delay to avoid rate limiting
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
             } catch (error) {
-                console.error("Message processing error:", error);
+                console.error(`❌ Error processing message ${message.id}:`, error);
                 results.push({
                     id: message.id || "unknown",
                     user: message.from,
                     message: message.body,
                     error: String(error),
-                    success: false
+                    status: "failed",
                 });
             }
         }
@@ -301,7 +337,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             processed: results.length,
-            immediate: immediateReply,
+            immediate: immediateFrom ? true : false,
             results,
         });
 
@@ -311,9 +347,10 @@ export async function POST(req: NextRequest) {
             {
                 success: false,
                 error: "Internal Server Error",
-                details: String(error)
+                details: error instanceof Error ? error.message : String(error),
             },
             { status: 500 }
         );
     }
 }
+
