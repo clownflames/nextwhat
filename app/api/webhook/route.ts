@@ -85,6 +85,14 @@ export async function POST(req: NextRequest) {
         events.messages.forEach((message) => {
             console.log("Message:", message);
 
+            if(message.type == "text"){
+                 client.messages.sendText({
+                    phoneNumberId:PHONE_ID,
+                    to:process.env.ADMIN_NO!,
+                    body:"text message recived"
+                })
+            }
+
             /*
             Example:
             if (message.type === "text") {
