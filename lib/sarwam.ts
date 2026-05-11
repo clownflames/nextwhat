@@ -2,45 +2,40 @@ import { and, eq, asc } from "drizzle-orm";
 import { db } from "@/db";
 import { whatsappMessageTable } from "@/db/schema/whatsapp";
 import { client, PHONE_ID } from "@/client";
+import { SarvamAIClient } from "sarvamai";
+
+
+const sarvamClient = new SarvamAIClient({
+    apiSubscriptionKey: process.env.SARVAM_API!,
+});
+
 
 // =========================
 // SARVAM AI API CALL
 // =========================
 async function callSarvamAI(userMessage: string): Promise<string> {
     try {
-        const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "api-subscription-key": process.env.SARVAM_API!,
-            },
-            body: JSON.stringify({
-                model: "sarvam-105b",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are a helpful WhatsApp assistant. Keep responses short (max 2-3 sentences), friendly, and conversational.",
-                    },
-                    {
-                        role: "user",
-                        content: userMessage,
-                    },
-                ],
-                temperature: 0.7,
-                top_p: 1,
-                max_tokens: 300,
-            }),
+        const response = await sarvamClient.chat.completions({
+            model: "sarvam-105b",
+            messages: [
+                {
+                    role: "system",
+                    content: "You are a helpful WhatsApp assistant. Keep responses short (max 2-3 sentences), friendly, and conversational.",
+                },
+                {
+                    role: "user",
+                    content: userMessage,
+                },
+            ],
+            temperature: 0.7,
+            top_p: 1,
+            // max_tokens: 300,
         });
 
-        if (!response.ok) {
-            throw new Error(`Sarvam API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const aiReply = data.choices?.[0]?.message?.content || 
-                       data.output?.text || 
-                       data.response || 
+        const aiReply = response.choices[0].message.content || 
                        "Sorry, I couldn't process that. Please try again.";
+
+        console.log(response)
         
         return aiReply;
     } catch (error) {
