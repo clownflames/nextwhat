@@ -24,11 +24,11 @@ export async function GET() {
             .from(whatsappMessageTable)
             .where(
                 and(
-                eq(
-                    whatsappMessageTable.replyed,
-                    false
-                ),                
-                eq(whatsappMessageTable.type,"text"))
+                    eq(
+                        whatsappMessageTable.replyed,
+                        false
+                    ),
+                    eq(whatsappMessageTable.type, "text"))
             )
             .orderBy(
                 asc(whatsappMessageTable.id)
@@ -189,7 +189,7 @@ async function callSarvamAI(userMessage: string): Promise<string> {
 
         // Extract response from different possible formats
         let aiReply = null;
-        
+
         if (data.choices?.[0]?.message?.content) {
             aiReply = data.choices[0].message.content;
         } else if (data.output?.text) {
@@ -203,7 +203,7 @@ async function callSarvamAI(userMessage: string): Promise<string> {
         }
 
         return aiReply;
-        
+
     } catch (error) {
         console.error("Sarvam AI Call Failed:", error);
         throw error;
@@ -218,9 +218,18 @@ export async function POST(req: NextRequest) {
         // Check if immediate reply request
         let immediateFrom = null;
         let immediateBody = null;
-        
+
+
         try {
             const body = await req.json();
+            const messageId = body.messageId;
+
+            await client.messages.markRead({
+                phoneNumberId: PHONE_ID,
+                messageId: messageId,
+                typingIndicator: { type: "text" },
+            });
+
             if (body.from && body.body) {
                 immediateFrom = body.from;
                 immediateBody = body.body;
@@ -282,7 +291,7 @@ export async function POST(req: NextRequest) {
 
                 // Generate AI response
                 let aiReply = "Sorry, I couldn't process your request. Please try again.";
-                
+
                 try {
                     aiReply = await callSarvamAI(message.body);
                 } catch (aiError) {

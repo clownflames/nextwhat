@@ -12,6 +12,7 @@ import { db } from "@/db";
 import { whatsappMessageTable } from "@/db/schema/whatsapp";
 
 import { PHONE_ID } from "@/client";
+import { date } from "drizzle-orm/mysql-core";
 
 // =========================
 // WEBHOOK VERIFICATION
@@ -109,7 +110,8 @@ export async function POST(req: NextRequest) {
             body: JSON.stringify({ 
               from: message.from, 
               messageId: message.id,
-              body: message.text?.body 
+              body: message.text?.body,
+              
             })
           }).catch(err => console.error("Reply API error:", err));
         }
